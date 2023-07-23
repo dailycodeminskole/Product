@@ -8,6 +8,8 @@
 #################################################
 
 # syllabus flow 
+Syllabus Walkthrough
+Syllabus Walkthrough
 
 '''
 1. Python fundamentals [2 months]
