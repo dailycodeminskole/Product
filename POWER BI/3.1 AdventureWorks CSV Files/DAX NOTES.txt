@@ -1,0 +1,297 @@
+DAX
+
+
+https://learn.microsoft.com/en-us/dax
+https://learn.microsoft.com/en-us/dax/dax-function-reference
+https://learn.microsoft.com/en-us/training/paths/data-analytics-microsoft/
+Exam PL-300: Microsoft Power BI Data Analyst
+
+INTRO TO CALCULATED COLUMNS
+It is based on Row context
+Each row will be used to get the output in the new correspondig rows
+
+
+> Adding calculated column to create the conditional column in Sales table
+[OrderQuantity]>1 Multiple else "Single"
+
+QuantityType_cc = IF(AW_SALES[OrderQuantity]>1,"Multiple","Single")
+
+> Adding calculated column to create check total qty   
+
+TotalQty = SUM(AW_SALES[OrderQuantity])
+
+each row has the same data as we have used the SUM function
+This is not the proper use of calculated column
+
+INTRO TO  MEASURES
+SAme as calcuated field in Pivot table
+based on filter context
+
+> Creating total sales MEASURES in the Sales table
+
+TotalOrder = SUM(AW_Sales[OrderQuantity])
+
+This is not visible in the Table
+But can be used and viewed in the Report View only
+
+
+Implicit VS Explicit measure 
+https://towardsdatascience.com/understanding-explicit-vs-implicit-measures-in-power-bi-e35b578808ca
+
+
+==============DATE============================================
+> Assigning number to day of the week in calender table
+Monday  =  1
+Sunday = 7
+
+Day of week = WEEKDAY(AW_Calendar_Lookup[Date],2)
+
+> Adding year of birth to customer in customer column
+
+BirthYear_cc = YEAR(AW_Customers_Lookup[BirthDate])
+
+> Calculating the age of customer in  customer column
+
+Current Age = DATEDIFF(AW_Customers_Lookup[BirthDate],TODAY(),YEAR)
+
+
+
+==============Conditional and Logical============================================
+> Adding parent column if the customer has more than 0 Totalchildren
+
+Parent = IF(AW_Customers_Lookup[TotalChildren]>0,"Yes","No")
+
+> Adding weekend column based on the day number in calender table
+
+Weekend = IF(OR(AW_Calendar_Lookup[Day of week]=6,AW_Calendar_Lookup[Day of week]=7),"Weekend", "Weekday")
+
+better approach
+
+Weekend = IF(AW_Calendar_Lookup[Day of week] = 6 || AW_Calendar_Lookup[Day of week]=7,"Weekend","Weekday")
+
+
+==============Text============================================
+> Creating full name using concatenation function
+
+Fullname_cc = AW_Customers_Lookup[Prefix] & " " & AW_Customers_Lookup[FirstName] & " " & AW_Customers_Lookup[LastName]
+
+> Adding short version of the month name in the calender table
+
+Short Name = LEFT(AW_Calendar_Lookup[Month Name],3)
+
+making the ans in upper case
+Short Name = UPPER(LEFT(AW_Calendar_Lookup[Month Name],3))
+
+
+==============Related vs Lookup==========================================
+
+> Adding retail price into sales table from product table
+
+RetailPrice = RELATED(AW_Products_Lookup[ProductPrice])
+
+> Creating new column Revenue using above price column
+
+Revenue = AW_SALES[RetailPrice]*AW_SALES[OrderQuantity]
+
+
+*****************MEASURES*****************************************
+> need  aggregate functions
+> basic math and stats 
+
+
+> can be craeted anywhere but they can be used in visuals only so crate in REPORT VIEW Tabs
+
+==============SUM============================================
+> Quantity Returned in Return table
+
+Quantity Returned = SUM(AW_Returns[ReturnQuantity])
+
+
+> adding EXPLICIT measure in the sales table (will have same use as the IMPLICIT revenue measure)
+
+Total Revenue = SUM(AW_SALES[Revenue])
+
+
+> adding Return rate in the returns table
+
+Return rate = AW_Returns[Quantity Returned]/[Quantity Sold]
+
+
+> adding Average Retail Price in the Product table
+
+Average Retail Price = AVERAGE(AW_Products_Lookup[ProductPrice])	
+
+
+
+
+==============COUNTING============================================
+
+> Counting the number of returns(not counting the number of items returned) in the return table
+each person might have single or multiple returns , we are counting how many times people came
+
+Total Return = COUNT(AW_Returns[ReturnQuantity])
+
+or we can also count number of rows in the table
+Total Return = COUNTROWS(AW_Returns)
+
+> Counting the volume  of orders and not the total number of orders in the sales table
+one customer will order many items in a single order
+we need to count the order and not the number of different items in the order
+
+Total Orders = DISTINCTCOUNT(AW_SALES[OrderNumber])
+
+
+==============CALCULATE============================================
+> Works like calcuate_if
+> Will modify and override the existing filter
+
+> Capturing the bulk orders in the sales
+
+Bulk Order = CALCULATE([Total Orders],AW_SALES[OrderQuantity]>1)
+
+SInce each [Total Orders] has one or more number of items quantity
+
+
+> Capturing the bike return orders in the return table
+
+Will modify and override the existing filter
+Bikes Return = CALCULATE([Total Return],AW_Product_Categories_Lookup[CategoryName] ="Bikes")
+
+
+> Orders in the weekends
+
+Weekend Orders = CALCULATE([Total Orders],AW_Calendar_Lookup[Weekend] = "Weekend")
+
+==============ALL============================================
+
+> Adding all orders measure in the sales table
+
+ALL Orders = CALCULATE([Total Orders],ALL(AW_SALES))
+
+
+> % of All Orders using above measure
+the denominator will not change based on the filter context
+
+% of All Orders = [Total Orders]/[ALL Orders]
+
+> calculating Overall average Price from Average Retail Price
+
+Overall average Price = CALCULATE([Average Retail Price],ALL(AW_Products_Lookup))
+
+
+==============FILTER===========================================
+> It is an iterator , checks row by row
+> creates a  subset of the original table
+> more complex filter
+
+> Creating a measure to get all rows that have price higher than overalll average price
+
+Hight Ticket Orders = CALCULATE([Total Orders],AW_Products_Lookup[ProductPrice]> [Overall average Price])
+above will give error
+
+Hight Ticket Orders = CALCULATE([Total Orders],AW_Products_Lookup[ProductPrice]> 714.22)
+
+changing the static value using filter
+
+Hight Ticket Orders = CALCULATE([Total Orders],FILTER(AW_Products_Lookup,AW_Products_Lookup[ProductPrice]>[Overall average Price]))
+
+
+
+
+
+==============ITERATOR===========================================
+
+> SUMX
+
+> Calculating total revenue using measure
+
+Total revenue_Measure = SUM(AW_SALES[OrderQuantity])*SUM(AW_Products_Lookup[ProductPrice])
+But this will give wrong result as it will sum up all the price while calculating the revenue
+
+> so the correct way is to use the SUMX
+Total revenue_Measure = SUMX(AW_SALES,AW_SALES[OrderQuantity]*AW_SALES[RetailPrice])
+
+
+==============TIME INTELLIGENCCE===========================================
+
+> calculating YTD Revenue
+
+YTD Revenue = CALCULATE([Total revenue_Measure],DATESYTD(AW_Calendar_Lookup[Date]))
+
+> Calculating Previous month revenue
+
+Prev Month Revenue = CALCULATE([Total revenue_Measure],DATEADD(AW_Calendar_Lookup[Date],-1,MONTH))
+
+> Adding revenue targte for current month at 110% of previous month
+ 
+Revenue Target = [Prev Month Revenue]*1.1
+
+> Adding rolling revenue in the sales
+
+10-day Rolling Revenue = CALCULATE([Total Revenue],DATESINPERIOD(AW_Calendar_Lookup[Date],MAX(AW_Calendar_Lookup[Date]),-10,DAY))
+
+
+
+
+==============HW===========================================
+
+> Calculated Columns
+
+> Adding customer priority column in customer table
+Customer Priority = IF(AW_Customers_Lookup[Current Age]<50 && AW_Customers_Lookup[AnnualIncome] > 100000,"Priority","Standard")
+
+> Adding Price Point in  the product table based on the product price
+
+Price Point = IF(AW_Products_Lookup[ProductPrice]>500,"HIGH",IF(AW_Products_Lookup[ProductPrice]>100,"MID Range","LOW"))
+
+>Adding short day in the calender table
+
+Short Day = UPPER(LEFT(AW_Calendar_Lookup[Day Name],3))
+
+> Adding SKU category
+
+SKU category = LEFT(AW_Products_Lookup[ProductSKU],2)
+
+
+> MEASURES
+
+> Counting distinct models in the Product table
+
+Product Models = DISTINCTCOUNT(AW_Products_Lookup[ModelName])
+
+> All return regardless of the filter
+
+All Returns = CALCULATE([Total Return],ALL(AW_Returns))
+
+> % of all returns
+
+% of All Returns = [Total Return]/ [All Returns]
+
+> Bike Returns
+
+Bike Returns = CALCULATE([Total Return],AW_Product_Categories_Lookup[CategoryName]="Bikes")
+
+> Total cost in the sales table
+
+
+Total cost = SUMX(AW_SALES,AW_SALES[OrderQuantity]*RELATED(AW_Products_Lookup[ProductCost]))
+
+>Total Profit  in the sales table
+
+Total Profit = [Total Revenue]-[Total cost]
+
+>  Prev Month Orders in the sales table
+
+Prev Month Orders = CALCULATE([Total Orders],DATEADD(AW_Calendar_Lookup[Date],-1,MONTH))
+
+> Order target for the current month based on previous month order
+
+Order target = [Prev Month Orders]*1.1
+
+>  Prev Month return in the return table
+
+Pren Months Returns = CALCULATE(AW_Returns[Total Return],DATEADD(AW_Calendar_Lookup[Date],-1,MONTH))
+
+> 90-day Rolling Profit
+
+90-day Rolling Profit = CALCULATE([Total Profit],DATESINPERIOD(AW_Calendar_Lookup[Date],MAX(AW_Calendar_Lookup[Date]),-90,DAY))
